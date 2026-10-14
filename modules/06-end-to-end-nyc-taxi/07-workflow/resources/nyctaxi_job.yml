@@ -1,0 +1,110 @@
+# Job: pipeline end-to-end NYC Taxi
+resources:
+  jobs:
+    nyctaxi_pipeline:
+      name: "[${bundle.target}] NYC Taxi Pipeline"
+
+      email_notifications:
+        on_failure:
+          - ${var.notifications_email}
+
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"   # 6 AM diario
+        timezone_id: America/Bogota
+        # En el target dev (mode: development) la CLI pausa el schedule
+        # automáticamente; en prod queda activo con este valor.
+        pause_status: UNPAUSED
+
+      job_clusters:
+        - job_cluster_key: nyctaxi_cluster
+          new_cluster:
+            spark_version: 15.4.x-scala2.12
+            node_type_id: Standard_DS3_v2
+            num_workers: 2
+            data_security_mode: SINGLE_USER
+            runtime_engine: PHOTON
+
+      tasks:
+        # -------- Bronze ------------------------------------------------
+        # No hay task de descarga: el landing es de solo lectura y lo puebla el
+        # profesor con 00-setup/_admin_download_landing.py (admin-only).
+        - task_key: bronze_trips
+          job_cluster_key: nyctaxi_cluster
+          notebook_task:
+            notebook_path: ../01-bronze/01_bronze_trips
+
+        - task_key: bronze_zones
+          job_cluster_key: nyctaxi_cluster
+          notebook_task:
+            notebook_path: ../01-bronze/02_bronze_zones
+
+        # -------- Silver ------------------------------------------------
+        - task_key: silver_clean
+          job_cluster_key: nyctaxi_cluster
+          depends_on:
+            - task_key: bronze_trips
+          notebook_task:
+            notebook_path: ../02-silver/01_silver_trips_clean
+
+        - task_key: silver_enriched
+          job_cluster_key: nyctaxi_cluster
+          depends_on:
+            - task_key: silver_clean
+            - task_key: bronze_zones
+          notebook_task:
+            notebook_path: ../02-silver/02_silver_trips_enriched
+
+        # -------- Gold --------------------------------------------------
+        # Los cuatro tasks de gold corren en paralelo después de silver.
+        - task_key: gold_revenue_by_zone
+          job_cluster_key: nyctaxi_cluster
+          depends_on:
+            - task_key: silver_enriched
+          notebook_task:
+            notebook_path: ../03-gold/01_gold_revenue_by_zone
+
+        - task_key: gold_daily_metrics
+          job_cluster_key: nyctaxi_cluster
+          depends_on:
+            - task_key: silver_enriched
+          notebook_task:
+            notebook_path: ../03-gold/02_gold_daily_metrics
+
+        - task_key: gold_hourly_demand
+          job_cluster_key: nyctaxi_cluster
+          depends_on:
+            - task_key: silver_enriched
+          notebook_task:
+            notebook_path: ../03-gold/03_gold_hourly_demand
+
+        - task_key: gold_ml_features
+          job_cluster_key: nyctaxi_cluster
+          depends_on:
+            - task_key: silver_enriched
+          notebook_task:
+            notebook_path: ../03-gold/04_gold_ml_features
+
+        # -------- ML ----------------------------------------------------
+        - task_key: train
+          job_cluster_key: nyctaxi_cluster
+          depends_on:
+            - task_key: gold_ml_features
+          notebook_task:
+            notebook_path: ../04-ml/01_train_trip_duration
+
+        - task_key: register
+          job_cluster_key: nyctaxi_cluster
+          depends_on:
+            - task_key: train
+          notebook_task:
+            notebook_path: ../04-ml/02_register_model
+            base_parameters:
+              # 01_train_trip_duration lo publica con dbutils.jobs.taskValues.set
+              run_id: "{{tasks.train.values.run_id}}"
+
+        - task_key: batch_inference
+          job_cluster_key: nyctaxi_cluster
+          depends_on:
+            - task_key: register
+          notebook_task:
+            notebook_path: ../04-ml/03_batch_inference

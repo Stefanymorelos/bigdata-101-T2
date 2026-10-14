@@ -1,0 +1,44 @@
+# Databricks Asset Bundle - NYC Taxi Pipeline
+# https://docs.databricks.com/dev-tools/bundles/index.html
+
+bundle:
+  name: nyctaxi-pipeline
+
+include:
+  - resources/*.yml
+
+# Los notebooks toman catálogo, schema y rutas de 00-setup/config.py, que se
+# importa con %run. Estas variables documentan la convención y quedan listas
+# para pasarse como parámetros del job si algún día se parametrizan.
+
+variables:
+  catalog:
+    description: "Catálogo compartido del curso en Unity Catalog. Lo crea el profesor; confirma el del semestre con tu docente."
+    default: "20080_databricks"
+
+  schema:
+    description: "Tu schema dentro del catálogo compartido: nombre_apellido en snake_case. Debe coincidir con SCHEMA en 00-setup/config.py."
+    default: camilo_soto
+
+  notifications_email:
+    description: Email para alertas del job
+    default: data-team@example.com
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://adb-xxxxxxxxxxxxxxxx.xx.azuredatabricks.net
+    run_as:
+      user_name: ${workspace.current_user.userName}
+
+  prod:
+    mode: production
+    workspace:
+      host: https://adb-xxxxxxxxxxxxxxxx.xx.azuredatabricks.net
+      root_path: /Shared/nyctaxi/prod
+    run_as:
+      service_principal_name: <service-principal-app-id>
+    variables:
+      notifications_email: data-ops@example.com
