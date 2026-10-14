@@ -7,7 +7,7 @@ Modelo estrella para el área de Finanzas, construido desde silver. Esta carpeta
 
 1. `00-setup/config.py` ya tiene `CATALOG = "20080_databricks"`, `SCHEMA = "stefany_morelos"` y las constantes
    `T_DM_*` del mart.
-2. Corre antes `00-setup/01_create_catalog`, `01-bronze/` (ene–jun 2024) y `02-silver/`.
+2. Antes se ejecutan `00-setup/01_create_catalog`, `01-bronze/` (oct-2024 a mar-2025) y `02-silver/`.
 
 ## Orden de ejecución
 
@@ -19,19 +19,12 @@ Modelo estrella para el área de Finanzas, construido desde silver. Esta carpeta
 | 3 | `03_dm_constraints_vistas_permisos.py` | Parte 3 (PK/FK, vistas, permisos) | ✅ `dm_constraints_views` |
 | 4 | `04_dm_preguntas_negocio.py` | Parte 4 (6 preguntas, solo con el mart) | ❌ análisis |
 | 5 | `05_dm_rendimiento_orquestacion.py` | Parte 5 (silver vs. estrella) + Parte 6 (DAG) | ❌ análisis |
-| — | `prueba_companero.sql` | Lo corre tu compañero en la Parte 3.3 | — |
+| — | `prueba_companero.sql` | Consultas de la prueba de permisos (Parte 3.3), desde la cuenta del compañero | — |
 | — | `ENUNCIADO_exercise_datamart.md` | Enunciado del ejercicio | — |
 
-## Lo que tienes que completar tú
+## Si cambia el esquema de alguna tabla
 
-- **Notebook 03, widget `companero`:** el correo de tu compañero. Después pega en la celda de evidencia la salida de
-  `SHOW GRANTS` y el error que él recibió.
-- **Notebooks 04 y 05:** las cifras marcadas con ✏️ en las celdas de interpretación y tus tiempos.
-
-## Si cambias el esquema de alguna tabla
-
-Corre `01_dm_dimensiones` con el widget `reset_mart = true` una vez. Eso borra y recrea el mart. Después corre
-`02` y `03`.
+Se ejecuta `01_dm_dimensiones` una vez con el widget `reset_mart = true` (borra y recrea el mart) y luego `02` y `03`.
 
 ## Diagrama
 

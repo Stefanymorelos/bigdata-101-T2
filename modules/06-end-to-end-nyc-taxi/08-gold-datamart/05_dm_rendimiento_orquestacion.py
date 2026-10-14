@@ -5,7 +5,7 @@
 # MAGIC Cubre la **Parte 5** (la misma consulta sobre silver y sobre la estrella, planes y diseño físico) y la
 # MAGIC **Parte 6** (DAG del workflow).
 # MAGIC
-# MAGIC > Para medir tiempos, usa el mismo cómputo para las dos versiones y no corras otros notebooks al mismo tiempo.
+# MAGIC Los tiempos se midieron en el mismo cómputo (*Standard Cluster*) para las dos versiones, sin otros notebooks corriendo.
 
 # COMMAND ----------
 

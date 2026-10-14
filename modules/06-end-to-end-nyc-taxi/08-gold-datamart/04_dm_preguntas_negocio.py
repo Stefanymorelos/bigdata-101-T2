@@ -9,8 +9,7 @@
 # MAGIC `RatecodeID = 2`…). Las reglas viven en las dimensiones (`tip_is_recorded`, `is_special_zone`, `is_airport`,
 # MAGIC `rate_code_desc`) y las consultas solo las usan.
 # MAGIC
-# MAGIC > Las celdas de **Interpretación** describen qué buscar en el resultado y la explicación de negocio esperada.
-# MAGIC > **Complétalas con las cifras de tu ejecución** (las marcadas con ✏️).
+# MAGIC Periodo analizado: **octubre de 2024 a marzo de 2025** (19.909.275 viajes en el mart).
 
 # COMMAND ----------
 
@@ -332,7 +331,7 @@ display(spark.sql(f"""
 # MAGIC - ✏️ La tarjeta pasa de **__ %** (inicio del periodo) a **__ %** (final). El efectivo pasa de **__ %** a **__ %**.
 # MAGIC   Flex Fare aparece desde **__** y llega a **__ %**.
 # MAGIC - Qué esperar: la tarjeta domina y el efectivo es la segunda forma de pago. **Flex Fare** (precio acordado de
-# MAGIC   antemano desde una app) es marginal en el periodo cargado (ene–jun 2024) y crece con fuerza desde 2025, cuando
+# MAGIC   antemano desde una app) es marginal hasta diciembre de 2024 y crece con fuerza desde enero de 2025, cuando
 # MAGIC   llega a cerca de un cuarto de los viajes, según el comentario de silver. Si se cargaran meses de 2025, su
 # MAGIC   crecimiento le quitaría participación sobre todo a la tarjeta.
 # MAGIC - **Implicaciones para Finanzas:**
@@ -387,8 +386,7 @@ display(spark.sql(f"""
 # MAGIC - Qué esperar:
 # MAGIC   - **Manhattan** tiene el mayor peso del `congestion_surcharge`, porque se cobra en viajes que tocan Manhattan al
 # MAGIC     sur de la calle 96. Desde 2025 se suma el `cbd_congestion_fee` (zona de cobro por congestión del MTA, al sur de
-# MAGIC     la calle 60), así que el peso de Manhattan **subiría en 2025**. Con los datos cargados (ene–jun 2024)
-# MAGIC     `recargo_cbd` es 0 en todo el periodo, como se decidió en el notebook 02.
+# MAGIC     la calle 60), así que el peso de Manhattan **sube desde enero de 2025**. En oct–dic 2024 `recargo_cbd` vale 0, como se decidió en el notebook 02.
 # MAGIC   - **Queens** tiene peso por `airport_fee`, que solo se cobra en pickups en JFK y LaGuardia.
 # MAGIC   - Los boroughs exteriores (Bronx, Staten Island) tienen el menor peso. Sus viajes rara vez entran a la zona de congestión.
 # MAGIC - Matiz: como `congestion_surcharge` y `airport_fee` son `NULL` en Flex Fare, el peso de 2025 en adelante está

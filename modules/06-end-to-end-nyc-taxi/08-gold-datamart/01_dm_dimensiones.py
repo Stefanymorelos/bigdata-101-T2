@@ -138,9 +138,9 @@ from pyspark.sql import functions as F
 # MAGIC ### Reinicio opcional del mart
 # MAGIC
 # MAGIC Las tablas del mart se crean con `CREATE TABLE IF NOT EXISTS` + `INSERT OVERWRITE`, para que
-# MAGIC las constraints de la Parte 3 sobrevivan a cada re-ejecución. Si cambias el **esquema** de
-# MAGIC alguna tabla, pon el widget `reset_mart` en `true` una sola vez. Eso borra el mart (la tabla
-# MAGIC de hechos primero, por las FK) y lo recrea desde cero. Después vuelve a correr los notebooks 02 y 03.
+# MAGIC las constraints de la Parte 3 sobrevivan a cada re-ejecución. Si cambia el **esquema** de
+# MAGIC alguna tabla, se ejecuta una sola vez con el widget `reset_mart = true`: borra el mart (la tabla
+# MAGIC de hechos primero, por las FK) y lo recrea desde cero; luego se ejecutan de nuevo los notebooks 02 y 03.
 
 # COMMAND ----------
 

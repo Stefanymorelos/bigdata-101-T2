@@ -1,20 +1,18 @@
--- Prueba de permisos (Parte 3.3) — la corre TU COMPAÑERO, no tú.
--- Ejecutar en un SQL warehouse (SQL Editor) o en un notebook serverless.
--- Reemplaza <catalogo> por el catálogo del curso y <schema_duenio> por el schema
--- de quien otorgó los permisos (su nombre_apellido).
+-- Prueba de permisos (Parte 3.3)
+-- Ejecutada por Santiago Mendoza (santiago.mendozam@upb.edu.co) desde su cuenta,
+-- en el SQL Editor con el Serverless Starter Warehouse.
+-- Permisos otorgados: USE SCHEMA sobre stefany_morelos + SELECT solo sobre las vistas del mart.
 
--- ✓ 1. Debe funcionar: vistas de consumo
-SELECT * FROM `<catalogo>`.`<schema_duenio>`.gold_taxi_dm_v_revenue_mensual
+-- ✓ 1. Se espera que funcione: vistas de consumo
+SELECT * FROM `20080_databricks`.`stefany_morelos`.gold_taxi_dm_v_revenue_mensual
 ORDER BY anio DESC, mes DESC, revenue DESC
 LIMIT 10;
 
-SELECT * FROM `<catalogo>`.`<schema_duenio>`.gold_taxi_dm_v_propinas_tarjeta
+SELECT * FROM `20080_databricks`.`stefany_morelos`.gold_taxi_dm_v_propinas_tarjeta
 LIMIT 10;
 
--- ✗ 2. Debe FALLAR (PERMISSION_DENIED / INSUFFICIENT_PERMISSIONS): tabla de hechos
-SELECT * FROM `<catalogo>`.`<schema_duenio>`.gold_taxi_dm_fact_trips LIMIT 10;
+-- ✗ 2. Se espera error de permisos: tabla de hechos
+SELECT * FROM `20080_databricks`.`stefany_morelos`.gold_taxi_dm_fact_trips LIMIT 10;
 
--- ✗ 3. Debe FALLAR: silver
-SELECT * FROM `<catalogo>`.`<schema_duenio>`.silver_yellow_trips_enriched LIMIT 10;
-
--- Copia el mensaje de error completo de 2 y 3 y pásaselo al dueño para su entrega.
+-- ✗ 3. Se espera error de permisos: silver
+SELECT * FROM `20080_databricks`.`stefany_morelos`.silver_yellow_trips_enriched LIMIT 10;

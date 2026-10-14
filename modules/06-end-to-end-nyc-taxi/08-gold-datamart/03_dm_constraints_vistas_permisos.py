@@ -5,7 +5,7 @@
 # MAGIC **Parte 3** del ejercicio:
 # MAGIC 1. `PRIMARY KEY` en cada dimensión y `FOREIGN KEY` de la tabla de hechos a cada dimensión.
 # MAGIC 2. Vistas de consumo para Finanzas, con nombres legibles y sin códigos.
-# MAGIC 3. Permisos: el compañero lee **solo** las vistas.
+# MAGIC 3. Permisos: un usuario que hace el papel de Finanzas lee **solo** las vistas.
 # MAGIC
 # MAGIC Requisito: haber corrido `02_dm_fact_trips` **con la conciliación en verde**.
 
@@ -309,17 +309,18 @@ display(spark.sql(f"SELECT * FROM {T_DM_V_PROPINAS_TARJETA} ORDER BY borough_pic
 # MAGIC %md
 # MAGIC ## 3.3 Permisos (en parejas)
 # MAGIC
-# MAGIC Escribe en el widget `companero` el correo de tu compañero, tal como aparece en Databricks.
-# MAGIC Se le otorga:
+# MAGIC La prueba se hizo con **Santiago Mendoza** (`santiago.mendozam@upb.edu.co`), que hace el papel de un usuario
+# MAGIC de Finanzas. Se le otorga:
 # MAGIC
-# MAGIC - `USE SCHEMA` sobre tu schema. Él ya tiene `USE CATALOG` sobre el catálogo del curso.
+# MAGIC - `USE SCHEMA` sobre el schema `stefany_morelos`. Ya tenía `USE CATALOG` sobre el catálogo del curso.
 # MAGIC - `SELECT` **solo sobre las 3 vistas**. **Nada** sobre `fact_trips`, las dimensiones ni silver.
 # MAGIC
-# MAGIC Si el widget está vacío, la celda no hace nada. Así el notebook también puede correr dentro del workflow.
+# MAGIC El usuario se recibe por el widget `companero`. Si el widget queda vacío, no se otorga nada, así que el notebook
+# MAGIC también puede correr dentro del workflow sin tocar permisos.
 
 # COMMAND ----------
 
-dbutils.widgets.text("companero", "", "Correo del compañero (vacío = no otorgar)")
+dbutils.widgets.text("companero", "santiago.mendozam@upb.edu.co", "Usuario de prueba (vacío = no otorgar)")
 PARTNER = dbutils.widgets.get("companero").strip()
 
 MART_VIEWS = [T_DM_V_REVENUE_MENSUAL, T_DM_V_PROPINAS_TARJETA, T_DM_V_VIAJES]
@@ -337,8 +338,8 @@ else:
 # MAGIC %md
 # MAGIC ### Evidencia: `SHOW GRANTS`
 # MAGIC
-# MAGIC El compañero debe aparecer con `USE SCHEMA` en el schema y con `SELECT` en las vistas, y **no** debe
-# MAGIC aparecer en `fact_trips` ni en silver.
+# MAGIC El usuario de prueba aparece con `USE SCHEMA` en el schema y con `SELECT` en las vistas, y **no** aparece
+# MAGIC en `fact_trips` ni en silver.
 
 # COMMAND ----------
 
@@ -353,7 +354,7 @@ for v in MART_VIEWS:
 # COMMAND ----------
 
 for t in [T_DM_FACT_TRIPS, T_SILVER_TRIPS_ENRICHED]:
-    print(f"── SHOW GRANTS ON {_name(t)}  (el compañero NO debe aparecer)")
+    print(f"── SHOW GRANTS ON {_name(t)}  (el usuario de prueba NO debe aparecer)")
     display(spark.sql(f"SHOW GRANTS ON TABLE {t}"))
 
 if PARTNER:
@@ -365,40 +366,33 @@ if PARTNER:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Lo que corre tu compañero (en su propio workspace)
+# MAGIC ### Prueba desde la cuenta del usuario de Finanzas
 # MAGIC
-# MAGIC Tu compañero ejecuta lo siguiente en un **SQL warehouse** o en un notebook con cómputo **serverless**,
-# MAGIC reemplazando `<catalogo>` y `<tu_schema>`. También está en el archivo `prueba_companero.sql` de esta carpeta.
+# MAGIC Santiago ejecutó estas consultas desde su cuenta, en el **SQL Editor** con el *Serverless Starter Warehouse*
+# MAGIC (también están en `prueba_companero.sql`):
 # MAGIC
 # MAGIC ```sql
-# MAGIC -- ✓ Debe funcionar
-# MAGIC SELECT * FROM `<catalogo>`.`<tu_schema>`.gold_taxi_dm_v_revenue_mensual LIMIT 10;
-# MAGIC SELECT * FROM `<catalogo>`.`<tu_schema>`.gold_taxi_dm_v_propinas_tarjeta LIMIT 10;
+# MAGIC -- ✓ Se espera que funcione
+# MAGIC SELECT * FROM `20080_databricks`.`stefany_morelos`.gold_taxi_dm_v_revenue_mensual LIMIT 10;
 # MAGIC
-# MAGIC -- ✗ Debe fallar con PERMISSION_DENIED / INSUFFICIENT_PERMISSIONS
-# MAGIC SELECT * FROM `<catalogo>`.`<tu_schema>`.gold_taxi_dm_fact_trips LIMIT 10;
-# MAGIC SELECT * FROM `<catalogo>`.`<tu_schema>`.silver_yellow_trips_enriched LIMIT 10;
+# MAGIC -- ✗ Se espera error de permisos
+# MAGIC SELECT * FROM `20080_databricks`.`stefany_morelos`.gold_taxi_dm_fact_trips LIMIT 10;
+# MAGIC SELECT * FROM `20080_databricks`.`stefany_morelos`.silver_yellow_trips_enriched LIMIT 10;
 # MAGIC ```
 # MAGIC
-# MAGIC > Si tu compañero usa un clúster **dedicado** (single user) con un runtime antiguo, la consulta a la vista también
-# MAGIC > puede fallar, porque ese modo exige permisos sobre las tablas base. Las vistas funcionan con permisos del dueño en
-# MAGIC > SQL warehouses, en serverless y en clústeres dedicados con DBR 15.4 o superior.
+# MAGIC Las vistas se leen con los permisos de su dueña en SQL warehouses, en serverless y en clústeres dedicados con
+# MAGIC DBR 15.4 o superior. En un clúster dedicado con un runtime anterior, la consulta a la vista también fallaría.
 # MAGIC
-# MAGIC **Evidencia (pega aquí lo que recibió tu compañero):**
+# MAGIC **Evidencia**
 # MAGIC
-# MAGIC ```
-# MAGIC -- Resultado de la vista (captura o primeras filas):
-# MAGIC
-# MAGIC -- Error al consultar fact_trips:
-# MAGIC
-# MAGIC -- Error al consultar silver_yellow_trips_enriched:
-# MAGIC
-# MAGIC ```
+# MAGIC 1. Consulta a `gold_taxi_dm_v_revenue_mensual`: [PENDIENTE: resultado]
+# MAGIC 2. Consulta a `gold_taxi_dm_fact_trips`: [PENDIENTE: mensaje de error]
+# MAGIC 3. Consulta a `silver_yellow_trips_enriched`: [PENDIENTE: mensaje de error]
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Pregunta: ¿por qué tu compañero lee la vista aunque no tenga `SELECT` sobre las tablas que la vista consulta?
+# MAGIC ### Pregunta: ¿por qué el compañero lee la vista aunque no tenga `SELECT` sobre las tablas que la vista consulta?
 # MAGIC
 # MAGIC Porque en Unity Catalog una vista se ejecuta con los **permisos de su dueño** (*definer's rights*), no con los de
 # MAGIC quien la consulta.
