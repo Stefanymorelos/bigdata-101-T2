@@ -29,11 +29,11 @@ from pyspark.sql import functions as F
 
 # Meses a ingerir en esta ejecución.
 # Ajusta según lo que necesites cargar.
-# El landing del curso tiene de 2023-01 a 2024-08. Para el ejercicio del data mart
-# se cargan 6 meses (lo que recomienda el README del módulo): ene–jun 2024.
+# Landing del curso: 2023-01 a 2026-08. Se cargan 6 meses que cruzan el inicio de 2025
+# (Flex Fare y cbd_congestion_fee solo existen desde ene-2025).
 MONTHS_TO_INGEST = [
-    (2024, 1), (2024, 2), (2024, 3),
-    (2024, 4), (2024, 5), (2024, 6),
+    (2024, 10), (2024, 11), (2024, 12),
+    (2025, 1),  (2025, 2),  (2025, 3),
 ]
 
 # COMMAND ----------
