@@ -97,14 +97,16 @@ display(spark.sql(f"""
 # MAGIC %md
 # MAGIC **Interpretación 1**
 # MAGIC
-# MAGIC - Manhattan (`service_zone = Yellow Zone`) concentra la mayor parte de los viajes y del revenue: es el mercado
-# MAGIC   natural del taxi amarillo.
-# MAGIC - Los aeropuertos (`service_zone = Airports` para JFK y LaGuardia, `EWR` para Newark) aportan pocos viajes, pero
-# MAGIC   una participación en revenue **mucho mayor** que su participación en viajes. Son viajes largos, con tarifa fija
-# MAGIC   a JFK, peajes y `airport_fee`. Esto se ve al comparar `pct_revenue_toca_aeropuerto` con `pct_viajes_toca_aeropuerto`.
-# MAGIC - ✏️ En el periodo, los viajes que **empiezan** en un aeropuerto representan **__ %** del revenue, y los que
-# MAGIC   **tocan** un aeropuerto, **__ %**. JFK aporta **__ %** y LaGuardia **__ %**. Newark es marginal porque está en
-# MAGIC   Nueva Jersey y los taxis amarillos no recogen pasajeros allí de forma habitual.
+# MAGIC - **Manhattan concentra el negocio.** Representa unos $418,8 M de los $522,7 M del periodo (≈ 80 % del revenue)
+# MAGIC   y 18,05 M de los 19,9 M de viajes. Casi todo cae en `service_zone = Yellow Zone`, el mercado natural del taxi amarillo.
+# MAGIC - **Los aeropuertos pesan mucho más en dinero que en viajes.** Los viajes que **empiezan** en un aeropuerto son
+# MAGIC   1.147.495 (≈ 5,8 % de los viajes) y generan **$80,9 M, el 15,48 % del revenue**. Son viajes largos, con tarifa fija
+# MAGIC   a JFK, peajes y `airport_fee`.
+# MAGIC   - JFK: 592.496 viajes, $43,9 M (**8,39 %**).
+# MAGIC   - LaGuardia: 554.939 viajes, $37,0 M (**7,09 %**).
+# MAGIC   - Newark: solo 60 viajes ($2.285). Está en Nueva Jersey y los taxis amarillos de NYC prácticamente no recogen allí.
+# MAGIC - La tabla mensual muestra además la participación de los viajes que **tocan** un aeropuerto (empiezan o terminan),
+# MAGIC   que es mayor porque suma los viajes **hacia** el aeropuerto.
 
 # COMMAND ----------
 
@@ -171,14 +173,16 @@ display(spark.sql(f"""
 # MAGIC %md
 # MAGIC **Interpretación 2**
 # MAGIC
-# MAGIC - ✏️ Ticket promedio hacia aeropuertos: **$__** en festivos vs. **$__** en días normales (diferencia de **__ %**).
-# MAGIC - Qué esperar: en un festivo hay **menos tráfico**, así que el taxímetro corre menos tiempo en los tramos
-# MAGIC   cobrados por tiempo. Además, no hay hora pico (sin el recargo `extra` de hora pico de lunes a viernes), y la mezcla
-# MAGIC   de viajes cambia (más turistas y familias, menos viajes de negocios). El ticket puede ser algo **menor o similar**.
-# MAGIC   Los viajes a JFK desde Manhattan tienen tarifa fija y no cambian.
-# MAGIC - El control por fin de semana sirve para separar el efecto "festivo" del efecto "no es día laboral".
-# MAGIC   Si el festivo se parece más al fin de semana que al día entre semana, el driver es la ausencia de tráfico y de
-# MAGIC   recargos de hora pico.
+# MAGIC - **Ticket promedio hacia aeropuertos: $71,91 en festivos vs. $73,43 en días normales**, un 2,1 % menor. La
+# MAGIC   distancia promedio es casi igual (12,32 vs. 12,06 millas), así que la diferencia no viene de viajes más cortos.
+# MAGIC   Viene de que en festivo hay menos tráfico (menos tiempo cobrado en el taxímetro) y no aplica el recargo de hora pico.
+# MAGIC   La demanda también baja: 1.646 viajes por día en festivo vs. 1.840 en día normal.
+# MAGIC - **Por aeropuerto el patrón se repite en JFK y LaGuardia.** JFK: $82,52 entre semana, $81,51 fin de semana y $80,06
+# MAGIC   en festivo. LaGuardia: $68,97, $66,19 y $66,58. El festivo se comporta como un fin de semana: el efecto es "día no
+# MAGIC   laboral", no el festivo en sí. Newark es la excepción ($89,87 en festivo), pero con solo 89 viajes no es concluyente.
+# MAGIC - **No todos los festivos son iguales.** Veterans Day (2.530 viajes/día) y Columbus Day (2.311) mueven más viajes al
+# MAGIC   aeropuerto que un día normal, porque mucha gente trabaja y viaja esos días. En cambio Thanksgiving (897) y Navidad (886)
+# MAGIC   tienen la mitad de la demanda: los viajes se hacen **antes** del festivo, no el mismo día.
 
 # COMMAND ----------
 
@@ -249,16 +253,19 @@ display(spark.sql("""
 # MAGIC %md
 # MAGIC **Interpretación 3**
 # MAGIC
-# MAGIC - ✏️ El **__ %** de los viajes con tarifa JFK empieza o termina en la zona *JFK Airport*.
+# MAGIC - **El 96,44 % de los viajes con tarifa JFK** (393.964 de 408.524) empieza o termina en la zona *JFK Airport*.
 # MAGIC - La tarifa 2 es la **tarifa fija entre JFK y Manhattan** (en ambos sentidos). La **elige el conductor** en el
-# MAGIC   taxímetro, mientras que la zona se asigna por GPS. El resto se explica por:
-# MAGIC   1. **Ubicación no asignada (264/265).** El GPS no ubicó el pickup o el dropoff, pero el viaje sí fue al aeropuerto.
-# MAGIC   2. **Zonas vecinas de Queens.** El pasajero se bajó o subió justo fuera del polígono *JFK Airport*, por ejemplo en
-# MAGIC      hoteles del aeropuerto, estacionamientos o zonas de alquiler de autos. El viaje es de aeropuerto, pero la zona no.
-# MAGIC   3. **Tarifa mal digitada.** Viajes a LaGuardia, Newark o dentro de Manhattan a los que el conductor les puso la
-# MAGIC      tarifa JFK por error. Es un problema de calidad del dato en origen.
-# MAGIC - Mira `tarifa_promedio` en el último cuadro. Si vale cerca de la tarifa fija de JFK, el viaje probablemente sí fue de
-# MAGIC   aeropuerto y lo que falló es la zona. Si es muy distinta, lo que está mal es el código de tarifa.
+# MAGIC   taxímetro, mientras que la zona se asigna por GPS. El 3,56 % restante se explica por:
+# MAGIC   1. **Zonas vecinas de Queens (2,24 %, 9.140 viajes).** El viaje es de aeropuerto, pero la zona asignada no es
+# MAGIC      *JFK Airport*. El par más frecuente es *Baisley Park* (zona contigua a JFK) → Manhattan, y todos los pares
+# MAGIC      del top tienen `fare_amount` = **$70**, que es exactamente la tarifa fija de JFK. El cobro fue correcto: falló
+# MAGIC      la asignación de zona.
+# MAGIC   2. **Error de digitación de la tarifa (0,69 %, 2.816 viajes).** No tocan Queens ni ningún aeropuerto, con una
+# MAGIC      distancia promedio de solo 2,68 millas, pero se les cobró la tarifa de JFK (ticket promedio $84,69). Son viajes
+# MAGIC      dentro de Manhattan con el código de tarifa mal puesto, lo que también implica un **sobrecobro** al pasajero.
+# MAGIC   3. **Otro aeropuerto (0,35 %, 1.438 viajes).** Viajes desde o hacia LaGuardia con la tarifa de JFK.
+# MAGIC   4. **Ubicación no asignada (0,29 %, 1.166 viajes).** Zonas 264/265: el GPS no ubicó el viaje, pero la tarifa y la
+# MAGIC      distancia (16,8 millas) indican que sí fue al aeropuerto.
 
 # COMMAND ----------
 
@@ -290,13 +297,17 @@ display(spark.sql(f"""
 # MAGIC %md
 # MAGIC **Interpretación 4**
 # MAGIC
-# MAGIC - ✏️ La mayor propina promedio en dólares está en **__** (franja) **__** (entre semana o fin de semana): **$__**.
-# MAGIC - ✏️ La mayor propina como % de la tarifa está en **__**: **__ %**.
-# MAGIC - Qué esperar: la **madrugada** suele tener la propina promedio más alta **en dólares**, porque tiene más viajes
-# MAGIC   largos (aeropuertos, regreso a otros boroughs). La **noche entre semana** suele tener el % más alto, con viajes de
-# MAGIC   ocio y salidas de restaurantes. Las dos medidas pueden dar ganadores distintos, y esa diferencia es en sí misma un hallazgo.
-# MAGIC - Esto solo es posible con la regla `tip_is_recorded`. Si se incluyera el efectivo, cada franja con más efectivo
-# MAGIC   mostraría propinas artificialmente bajas.
+# MAGIC - **En dólares, la mayor propina está en la madrugada entre semana: $4,31 por viaje.** Son viajes más largos
+# MAGIC   (aeropuerto, regreso a casa desde otros boroughs). La menor está en la madrugada de fin de semana ($3,39), con viajes
+# MAGIC   cortos de salida nocturna.
+# MAGIC - **Como % de la tarifa, la mayor propina está en la noche entre semana: 24,00 %**, seguida por la tarde entre semana
+# MAGIC   (23,39 %). Es la franja de cenas y salidas después del trabajo.
+# MAGIC - **Entre semana se deja más propina que el fin de semana** en casi todas las franjas, en dólares y en %. La única
+# MAGIC   excepción es la mañana, donde el fin de semana deja un % un poco mayor (23,08 % vs. 22,84 %).
+# MAGIC - Las dos medidas dan ganadores distintos, y eso confirma que el promedio en dólares depende sobre todo de lo largo del
+# MAGIC   viaje, no de la generosidad del pasajero.
+# MAGIC - Este análisis es posible gracias a la regla `tip_is_recorded`: si se incluyeran efectivo y Flex Fare (propina en 0),
+# MAGIC   las franjas con más efectivo mostrarían propinas artificialmente bajas.
 
 # COMMAND ----------
 
@@ -328,17 +339,23 @@ display(spark.sql(f"""
 # MAGIC %md
 # MAGIC **Interpretación 5**
 # MAGIC
-# MAGIC - ✏️ La tarjeta pasa de **__ %** (inicio del periodo) a **__ %** (final). El efectivo pasa de **__ %** a **__ %**.
-# MAGIC   Flex Fare aparece desde **__** y llega a **__ %**.
-# MAGIC - Qué esperar: la tarjeta domina y el efectivo es la segunda forma de pago. **Flex Fare** (precio acordado de
-# MAGIC   antemano desde una app) es marginal hasta diciembre de 2024 y crece con fuerza desde enero de 2025, cuando
-# MAGIC   llega a cerca de un cuarto de los viajes, según el comentario de silver. Si se cargaran meses de 2025, su
-# MAGIC   crecimiento le quitaría participación sobre todo a la tarjeta.
+# MAGIC | Mes | Tarjeta | Efectivo | Flex Fare | Otros |
+# MAGIC |---|---|---|---|---|
+# MAGIC | oct-2024 | 77,54 % | 12,28 % | 9,74 % | 0,44 % |
+# MAGIC | dic-2024 | 77,83 % | 13,05 % | 8,64 % | 0,48 % |
+# MAGIC | ene-2025 | 75,12 % | 11,09 % | 13,36 % | 0,43 % |
+# MAGIC | mar-2025 | 69,98 % | 9,71 % | 19,89 % | 0,42 % |
+# MAGIC
+# MAGIC - **La tarjeta domina**, pero cae de 77,5 % a 70,0 % en seis meses. El efectivo baja de 12,3 % a 9,7 %.
+# MAGIC - **Flex Fare se duplica**: estable alrededor de 9–10 % en el último trimestre de 2024, salta a 13,4 % en enero de
+# MAGIC   2025 y llega a **19,9 %** en febrero y marzo. Su participación en revenue sigue la misma tendencia (8,7 % → 19,2 %).
+# MAGIC   Le quita participación tanto a la tarjeta como al efectivo.
 # MAGIC - **Implicaciones para Finanzas:**
 # MAGIC   - Cada viaje que pasa a Flex Fare es un viaje **sin propina registrada** y **sin `congestion_surcharge` ni
-# MAGIC     `airport_fee` publicados**. Las métricas de propinas y recargos de 2025 en adelante cubren una fracción menor del
-# MAGIC     negocio, y hay que leerlas como "de los viajes donde se registra", no como del total.
-# MAGIC   - Es justo la razón de dejar esos recargos en `NULL` y no en `0` (notebook 02).
+# MAGIC     `airport_fee` publicados**. Las métricas de propinas y recargos de 2025 cubren una fracción menor del negocio y
+# MAGIC     deben leerse como "de los viajes donde se registra", no como del total.
+# MAGIC   - Es justo la razón de dejar esos recargos en `NULL` y no en `0` (notebook 02): con 0, el recargo promedio caería
+# MAGIC     artificialmente a medida que crece Flex Fare.
 
 # COMMAND ----------
 
@@ -382,12 +399,16 @@ display(spark.sql(f"""
 # MAGIC %md
 # MAGIC **Interpretación 6**
 # MAGIC
-# MAGIC - ✏️ El borough con mayor peso de recargos es **__** (**__ %** del `total_amount`), y el de menor peso es **__** (**__ %**).
-# MAGIC - Qué esperar:
-# MAGIC   - **Manhattan** tiene el mayor peso del `congestion_surcharge`, porque se cobra en viajes que tocan Manhattan al
-# MAGIC     sur de la calle 96. Desde 2025 se suma el `cbd_congestion_fee` (zona de cobro por congestión del MTA, al sur de
-# MAGIC     la calle 60), así que el peso de Manhattan **sube desde enero de 2025**. En oct–dic 2024 `recargo_cbd` vale 0, como se decidió en el notebook 02.
-# MAGIC   - **Queens** tiene peso por `airport_fee`, que solo se cobra en pickups en JFK y LaGuardia.
-# MAGIC   - Los boroughs exteriores (Bronx, Staten Island) tienen el menor peso. Sus viajes rara vez entran a la zona de congestión.
-# MAGIC - Matiz: como `congestion_surcharge` y `airport_fee` son `NULL` en Flex Fare, el peso de 2025 en adelante está
-# MAGIC   **subestimado** en la proporción de Flex Fare: ese recargo existe, pero la TLC no lo desglosa.
+# MAGIC - **Manhattan es el borough con mayor peso de recargos: 10,54 % del `total_amount`.** Casi todo es
+# MAGIC   `congestion_surcharge` ($39,0 M), que se cobra en viajes que tocan Manhattan al sur de la calle 96, más el
+# MAGIC   `cbd_congestion_fee` ($5,1 M).
+# MAGIC - **El efecto del cobro CBD se ve al abrir por año:** en Manhattan los recargos pasan de 9,47 % (oct–dic 2024) a
+# MAGIC   **11,69 %** (ene–mar 2025), y la diferencia es casi toda el `cbd_congestion_fee` (2,55 % en 2025, 0 % en 2024, como
+# MAGIC   se decidió en el notebook 02). El peso de la congestión en sí se mantiene estable (9,47 % → 9,14 %).
+# MAGIC - **Queens (4,44 %)** tiene un peso repartido entre congestión (≈ 2 %) y `airport_fee` (≈ 2,2 %), que solo se cobra
+# MAGIC   en pickups en JFK y LaGuardia. En 2025 sube a 4,60 % por el CBD.
+# MAGIC - Los boroughs exteriores tienen el menor peso: **Brooklyn 0,96 %, Bronx 0,32 % y Staten Island 0,28 %**. Sus viajes
+# MAGIC   rara vez entran a la zona de congestión. *Unknown* (8,29 %) se parece a Manhattan, lo que sugiere que buena parte de
+# MAGIC   esos viajes sin zona asignada son en realidad de Manhattan.
+# MAGIC - Matiz: como `congestion_surcharge` y `airport_fee` son `NULL` en Flex Fare, el peso de 2025 está **subestimado** en
+# MAGIC   la proporción de Flex Fare (≈ 20 % de los viajes en feb–mar 2025): ese recargo existe, pero la TLC no lo desglosa.

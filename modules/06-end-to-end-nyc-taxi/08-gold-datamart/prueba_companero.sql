@@ -1,5 +1,5 @@
 -- Prueba de permisos (Parte 3.3)
--- Ejecutada por Santiago Mendoza (santiago.mendozam@upb.edu.co) desde su cuenta,
+-- Ejecutada por Valentina Rendón (valentina.rendonc@upb.edu.co) desde su cuenta,
 -- en el SQL Editor con el Serverless Starter Warehouse.
 -- Permisos otorgados: USE SCHEMA sobre stefany_morelos + SELECT solo sobre las vistas del mart.
 

@@ -204,27 +204,44 @@ print(plan_star)
 # MAGIC - **En las dos versiones** el costo dominante es el mismo: un scan de todas las filas, un `HashAggregate` parcial,
 # MAGIC   un shuffle por la llave del `GROUP BY` y el `TakeOrderedAndProject` del top 20.
 # MAGIC
-# MAGIC ✏️ **Mis tiempos:** silver **__ s** vs. estrella **__ s** (mediana).
+# MAGIC **Resultado medido (mediana de 3 corridas, sin contar el calentamiento):**
+# MAGIC
+# MAGIC | Versión | run1 (calentamiento) | run2 | run3 | run4 | Mediana |
+# MAGIC |---|---|---|---|---|---|
+# MAGIC | Silver (tabla ancha) | 2,77 s | 2,56 s | 2,62 s | 2,56 s | **2,56 s** |
+# MAGIC | Estrella (fact + 2× `dim_zone`) | 1,82 s | 1,44 s | 1,59 s | 1,67 s | **1,59 s** |
+# MAGIC
+# MAGIC Operadores en el plan: silver tiene **0 joins** y 1 scan. La estrella tiene **2 `BroadcastHashJoin`** (uno por cada
+# MAGIC rol de `dim_zone`) y 3 scans (la tabla de hechos y dos veces la dimensión). Ninguna versión usa `SortMergeJoin`.
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ### Pregunta: ¿la estrella fue más rápida que la tabla ancha de silver? Si no, ¿por qué? ¿Qué ganas con el mart aunque no gane en velocidad?
 # MAGIC
-# MAGIC ✏️ *Resultado observado: ______.*
+# MAGIC **Sí: la estrella fue un 38 % más rápida (1,59 s vs. 2,56 s)**, aunque hace dos joins que silver no hace.
+# MAGIC La ventaja no viene del modelo estrella en sí, sino del **diseño físico**:
 # MAGIC
-# MAGIC Lo esperable es que los tiempos sean **parecidos**, y no es raro que silver gane:
+# MAGIC | | `fact_trips` | `silver_yellow_trips_enriched` |
+# MAGIC |---|---|---|
+# MAGIC | Archivos | **6** | 182 |
+# MAGIC | Tamaño | **≈ 400 MB** | ≈ 660 MB |
+# MAGIC | Organización | Liquid clustering (`pickup_date_key`, `pickup_zone_key`) | Particionada por `pickup_date` (una carpeta por día) |
 # MAGIC
-# MAGIC - **Silver ya tiene el join hecho.** La estrella agrega dos broadcast joins por consulta. Son baratos (una búsqueda en
-# MAGIC   una tabla hash de 266 filas por viaje), pero no son gratis.
-# MAGIC - **El formato columnar le quita la ventaja a la tabla "angosta".** Parquet/Delta solo lee las columnas que la consulta
-# MAGIC   usa, así que las ~40 columnas extra de silver **no se leen**. Las dos versiones leen 5–6 columnas de la misma cantidad de filas.
-# MAGIC - Lo que **puede** inclinar la balanza hacia la estrella es el **diseño físico**, no el modelo. `fact_trips` tiene
-# MAGIC   llaves `INT` y archivos compactados con liquid clustering. `silver_yellow_trips_enriched` está particionada por
-# MAGIC   `pickup_date`: más de 1.000 carpetas con archivos pequeños, y más tareas y metadatos que abrir. En una consulta
-# MAGIC   sin filtro de fecha como esta, esa partición no se aprovecha y solo agrega overhead.
+# MAGIC - **Menos archivos y más grandes.** Silver tiene un archivo por día (182 particiones), y cada uno es una tarea y unos
+# MAGIC   metadatos más que abrir. En una consulta sin filtro de fecha, como esta, la partición no se aprovecha y solo agrega
+# MAGIC   *overhead*. `fact_trips` está compactada en 6 archivos por el `OPTIMIZE` con liquid clustering.
+# MAGIC - **Tabla más liviana.** La tabla de hechos guarda llaves `INT` en vez de textos repetidos (nombres de zona y borough
+# MAGIC   en cada fila), así que pesa ~40 % menos.
+# MAGIC - **Los joins son baratos.** `dim_zone` tiene 266 filas: se envía completa a cada ejecutor (broadcast) y el join es una
+# MAGIC   búsqueda en una tabla hash, sin mover la tabla grande por la red.
+# MAGIC - El formato columnar hace que en ambos casos solo se lean las 5–6 columnas que usa la consulta. Por eso el ancho de
+# MAGIC   silver no es lo que la hace más lenta.
 # MAGIC
-# MAGIC **Lo que se gana con el mart aunque no gane en velocidad:**
+# MAGIC Si silver tuviera el mismo diseño físico (pocos archivos grandes), lo esperable sería que las dos versiones tardaran
+# MAGIC parecido, o incluso que silver ganara por no hacer joins.
+# MAGIC
+# MAGIC **Lo que se gana con el mart, más allá de la velocidad:**
 # MAGIC
 # MAGIC 1. **Reglas de negocio en un solo lugar.** `NOT IN (264, 265)` está copiado en `01_gold_revenue_by_zone`,
 # MAGIC    `03_gold_hourly_demand` y `05_top_trip_pairs.sql`. En el mart es `is_special_zone`, y lo mismo pasa con

@@ -309,11 +309,16 @@ display(spark.sql(f"SELECT * FROM {T_DM_V_PROPINAS_TARJETA} ORDER BY borough_pic
 # MAGIC %md
 # MAGIC ## 3.3 Permisos (en parejas)
 # MAGIC
-# MAGIC La prueba se hizo con **Valentina Rendón** (`valentina.rendonc@upb.edu.co`), que hace el papel de un usuario
-# MAGIC de Finanzas. Se le otorga:
+# MAGIC La prueba se hizo con **Valentina Rendón** (`valentina.rendonc@upb.edu.co`), que hace el papel de un usuario de
+# MAGIC Finanzas. Se le otorga:
 # MAGIC
 # MAGIC - `USE SCHEMA` sobre el schema `stefany_morelos`. Ya tenía `USE CATALOG` sobre el catálogo del curso.
 # MAGIC - `SELECT` **solo sobre las 3 vistas**. **Nada** sobre `fact_trips`, las dimensiones ni silver.
+# MAGIC
+# MAGIC En una ejecución anterior también se le otorgaron estos permisos a Santiago Mendoza. Por eso su `USE SCHEMA` sigue
+# MAGIC apareciendo en `SHOW GRANTS ON SCHEMA`, pero ya no tiene `SELECT` sobre las vistas: `CREATE OR REPLACE VIEW` (sección 3.2)
+# MAGIC **reinicia los permisos de la vista** cada vez que se recrea. Por esa razón los `GRANT` van en este mismo notebook,
+# MAGIC justo después de crear las vistas, para que se vuelvan a aplicar en cada ejecución del workflow.
 # MAGIC
 # MAGIC El usuario se recibe por el widget `companero`. Si el widget queda vacío, no se otorga nada, así que el notebook
 # MAGIC también puede correr dentro del workflow sin tocar permisos.
@@ -371,26 +376,63 @@ if PARTNER:
 # MAGIC %md
 # MAGIC ### Prueba desde la cuenta del usuario de Finanzas
 # MAGIC
-# MAGIC Santiago ejecutó estas consultas desde su cuenta, en el **SQL Editor** con el *Serverless Starter Warehouse*
+# MAGIC Valentina ejecutó estas consultas desde su cuenta, en el **SQL Editor** con el *Serverless Starter Warehouse*
 # MAGIC (también están en `prueba_companero.sql`):
 # MAGIC
 # MAGIC ```sql
-# MAGIC -- ✓ Se espera que funcione
 # MAGIC SELECT * FROM `20080_databricks`.`stefany_morelos`.gold_taxi_dm_v_revenue_mensual LIMIT 10;
-# MAGIC
-# MAGIC -- ✗ Se espera error de permisos
 # MAGIC SELECT * FROM `20080_databricks`.`stefany_morelos`.gold_taxi_dm_fact_trips LIMIT 10;
 # MAGIC SELECT * FROM `20080_databricks`.`stefany_morelos`.silver_yellow_trips_enriched LIMIT 10;
 # MAGIC ```
 # MAGIC
-# MAGIC Las vistas se leen con los permisos de su dueña en SQL warehouses, en serverless y en clústeres dedicados con
-# MAGIC DBR 15.4 o superior. En un clúster dedicado con un runtime anterior, la consulta a la vista también fallaría.
+# MAGIC **Evidencia y hallazgo**
 # MAGIC
-# MAGIC **Evidencia**
+# MAGIC | Consulta (desde la cuenta de Valentina) | Resultado esperado | Resultado obtenido |
+# MAGIC |---|---|---|
+# MAGIC | `gold_taxi_dm_v_revenue_mensual` | Lee la vista | ✓ Lee la vista (10 filas: año, mes, borough, `service_zone`…) |
+# MAGIC | `gold_taxi_dm_fact_trips` | `PERMISSION_DENIED` | ✗ **Lee la tabla** (10 filas con las llaves `pickup_date_key`, `pickup_zone_key`…) |
+# MAGIC | `silver_yellow_trips_enriched` | `PERMISSION_DENIED` | ✗ **Lee la tabla** (10 filas con `PULocationID`, `tpep_pickup_datetime`…) |
 # MAGIC
-# MAGIC 1. Consulta a `gold_taxi_dm_v_revenue_mensual`: [PENDIENTE: resultado]
-# MAGIC 2. Consulta a `gold_taxi_dm_fact_trips`: [PENDIENTE: mensaje de error]
-# MAGIC 3. Consulta a `silver_yellow_trips_enriched`: [PENDIENTE: mensaje de error]
+# MAGIC Capturas de la prueba (carpeta `evidencia/`):
+# MAGIC
+# MAGIC **1. Vista `gold_taxi_dm_v_revenue_mensual`: se lee ✓**
+# MAGIC
+# MAGIC ![Valentina lee la vista](./evidencia/1_valentina_vista_revenue_mensual.png)
+# MAGIC
+# MAGIC **2. Tabla `gold_taxi_dm_fact_trips`: también se lee (se esperaba `PERMISSION_DENIED`)**
+# MAGIC
+# MAGIC ![Valentina lee fact_trips](./evidencia/2_valentina_fact_trips.png)
+# MAGIC
+# MAGIC **3. Tabla `silver_yellow_trips_enriched`: también se lee (se esperaba `PERMISSION_DENIED`)**
+# MAGIC
+# MAGIC ![Valentina lee silver](./evidencia/3_valentina_silver.png)
+# MAGIC
+# MAGIC **4. `SHOW GRANTS` sobre el schema y las vistas**
+# MAGIC
+# MAGIC ![SHOW GRANTS](./evidencia/4_show_grants.png)
+# MAGIC
+# MAGIC La vista funciona como se diseñó, pero las tablas internas también quedan visibles. La causa está en los
+# MAGIC `SHOW GRANTS` de arriba: además de los permisos otorgados en este notebook, el grupo **`NRC-20080`** tiene
+# MAGIC **`ALL PRIVILEGES`** sobre todo el schema `stefany_morelos`. El profesor lo configuró así para que los estudiantes del
+# MAGIC curso puedan usar el clúster compartido, y los compañeros pertenecen a ese grupo. El `SHOW GRANTS` filtrado por
+# MAGIC usuario confirma que el usuario de prueba no tiene permisos **directos** sobre `fact_trips` ni silver: el acceso
+# MAGIC viene del grupo.
+# MAGIC
+# MAGIC La prueba recíproca dio el mismo resultado: desde la cuenta de Stefany, sobre el mart de Valentina
+# MAGIC (`valentina_rendon`), las vistas se leen y `fact_trips` también.
+# MAGIC
+# MAGIC **Por qué pasa:** en Unity Catalog los permisos **se suman** y no existe un "denegar". Un usuario tiene la unión de lo
+# MAGIC que se le otorga a él y a todos sus grupos. Como `NRC-20080` tiene `ALL PRIVILEGES` sobre el schema, el permiso
+# MAGIC heredado alcanza a todas las tablas, y el `SELECT` limitado a las vistas no lo restringe. Por eso la prueba no puede
+# MAGIC mostrar el `PERMISSION_DENIED` en este workspace.
+# MAGIC
+# MAGIC **Cómo se garantizaría en un entorno real** que Finanzas solo vea las vistas:
+# MAGIC 1. Los usuarios de Finanzas no deben pertenecer a ningún grupo con privilegios sobre el schema completo. Se les otorga
+# MAGIC    acceso a través de un grupo propio (por ejemplo `finanzas_tlc`) que solo tenga `USE SCHEMA` y `SELECT` sobre las vistas.
+# MAGIC 2. Mejor aún, las vistas de consumo se publican en un **schema separado** (por ejemplo `gold_taxi_consumo`) y Finanzas
+# MAGIC    solo recibe permisos sobre ese schema. Así, un permiso amplio sobre el schema de trabajo nunca les da acceso a las
+# MAGIC    tablas internas.
+# MAGIC 3. Los permisos amplios a nivel de schema o catálogo se reservan para el equipo de ingeniería.
 
 # COMMAND ----------
 
@@ -414,3 +456,6 @@ if PARTNER:
 # MAGIC 1. Si el dueño pierde el `SELECT` sobre la tabla base, la vista deja de funcionar **para todos**.
 # MAGIC 2. Quien tenga `SELECT` sobre `v_viajes` ve el detalle viaje a viaje. Por eso el diseño de la vista es la decisión
 # MAGIC    de seguridad, y hay que exponer solo lo que el área necesita.
+# MAGIC 3. La vista solo protege si es el **único** camino a los datos. Como se vio en la evidencia, si el usuario tiene un
+# MAGIC    permiso más amplio por otro lado (un grupo con `ALL PRIVILEGES` sobre el schema), puede saltarse la vista y leer
+# MAGIC    las tablas directamente.
