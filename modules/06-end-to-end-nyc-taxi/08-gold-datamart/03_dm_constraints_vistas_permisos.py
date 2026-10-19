@@ -309,7 +309,7 @@ display(spark.sql(f"SELECT * FROM {T_DM_V_PROPINAS_TARJETA} ORDER BY borough_pic
 # MAGIC %md
 # MAGIC ## 3.3 Permisos (en parejas)
 # MAGIC
-# MAGIC La prueba se hizo con **Santiago Mendoza** (`santiago.mendozam@upb.edu.co`), que hace el papel de un usuario
+# MAGIC La prueba se hizo con **Valentina Rendón** (`valentina.rendonc@upb.edu.co`), que hace el papel de un usuario
 # MAGIC de Finanzas. Se le otorga:
 # MAGIC
 # MAGIC - `USE SCHEMA` sobre el schema `stefany_morelos`. Ya tenía `USE CATALOG` sobre el catálogo del curso.
@@ -320,7 +320,7 @@ display(spark.sql(f"SELECT * FROM {T_DM_V_PROPINAS_TARJETA} ORDER BY borough_pic
 
 # COMMAND ----------
 
-dbutils.widgets.text("companero", "santiago.mendozam@upb.edu.co", "Usuario de prueba (vacío = no otorgar)")
+dbutils.widgets.text("companero", "valentina.rendonc@upb.edu.co", "Usuario de prueba (vacío = no otorgar)")
 PARTNER = dbutils.widgets.get("companero").strip()
 
 MART_VIEWS = [T_DM_V_REVENUE_MENSUAL, T_DM_V_PROPINAS_TARJETA, T_DM_V_VIAJES]
@@ -359,9 +359,12 @@ for t in [T_DM_FACT_TRIPS, T_SILVER_TRIPS_ENRICHED]:
 
 if PARTNER:
     for t in [T_DM_FACT_TRIPS, T_SILVER_TRIPS_ENRICHED]:
-        direct = spark.sql(f"SHOW GRANTS `{PARTNER}` ON TABLE {t}").count()
-        assert direct == 0, f"{PARTNER} tiene permisos directos sobre {_name(t)}: revócalos"
-    print(f"✓ {PARTNER} no tiene permisos directos sobre fact_trips ni silver")
+        g = spark.sql(f"SHOW GRANTS `{PARTNER}` ON TABLE {t}")
+        # SHOW GRANTS también lista lo heredado del schema (el USE SCHEMA otorgado arriba, ObjectType = SCHEMA).
+        # Lo que no debe existir es un permiso otorgado directamente sobre la tabla.
+        direct = g.filter(F.col("ObjectType") == "TABLE").count()
+        assert direct == 0, f"{PARTNER} tiene permisos directos sobre {_name(t)}"
+    print(f"✓ {PARTNER} no tiene permisos directos sobre fact_trips ni silver (solo hereda USE SCHEMA)")
 
 # COMMAND ----------
 
